@@ -63,7 +63,10 @@
  * 
  * Modified by Steven Ervin - 2013-Oct-24
  * Added support for using the MetaData object to style the output.
- * Added support for Server generated summaries. 
+ * Added support for Server generated summaries.
+ *
+ * Modified by Diego Fliess - 2013-Nov-19
+ * Added support for TreeGrids
  */
 Ext.define("Ext.ux.grid.Printer", {
     
@@ -75,9 +78,9 @@ Ext.define("Ext.ux.grid.Printer", {
          * @param {Ext.grid.Panel} grid The grid to print
          */
         print: function(grid, featureId) {
-        	
-        	//featureId is no longer needed and is ignored 
-        	
+          
+          //featureId is no longer needed and is ignored 
+          
             // We generate an XTemplate here by using 2 intermediary
             // XTemplates - one to create the header, the other
             // to create the body (see the escaped {} below)
@@ -87,13 +90,13 @@ Ext.define("Ext.ux.grid.Printer", {
                 //var feature = this.getFeature( grid, featureId );
                 var feature = this.getFeature( grid, 'grouping' );
                 if (feature)
-                	groupField = feature.getGroupField();
+                  groupField = feature.getGroupField();
                 else
-                	isGrouped = false;  // isGrouped turned off if grouping feature not defined
+                  isGrouped = false;  // isGrouped turned off if grouping feature not defined
             }
             if (grid.columnManager)
             {
-            	// use the column manager to get the columns.
+              // use the column manager to get the columns.
                 var columns = grid.columnManager.getColumns(); // Not supported in ExtJS-4.1.x
             }
             else
@@ -124,17 +127,17 @@ Ext.define("Ext.ux.grid.Printer", {
 //                        
 //                        if (column && column.dataIndex == key) {
 //                            var meta = { 'align'            : column.align,
-//                            			 'cellIndex'        : col,
-//                            			 'classes'          : [],
-//                            			 'column'           : column,
-//                            			 'innerCls'         : '',
-//                            			 'record'           : item,
-//                            			 'recordIndex'      : grid.store.indexOf(item),
-//                            			 'style'            : '',
-//                            			 'tdAttr'           : '',
-//                            			 'tdCls'            : '',
-//                            			 'unselectableAttr' : 'unselectable="on"',
-//                            			 'value'            : value
+//                                   'cellIndex'        : col,
+//                                   'classes'          : [],
+//                                   'column'           : column,
+//                                   'innerCls'         : '',
+//                                   'record'           : item,
+//                                   'recordIndex'      : grid.store.indexOf(item),
+//                                   'style'            : '',
+//                                   'tdAttr'           : '',
+//                                   'tdCls'            : '',
+//                                   'unselectableAttr' : 'unselectable="on"',
+//                                   'value'            : value
 //                                       };
 //                            value = column.renderer ? column.renderer.call(grid, value, meta, item, row, col, grid.store, grid.view) : value;
 //                            var varName = Ext.String.createVarName(column.dataIndex);
@@ -185,9 +188,7 @@ Ext.define("Ext.ux.grid.Printer", {
                             clearColumns.push(column);
                         } else if ( column.xtype === 'templatecolumn'){
                             clearColumns.push(column);
-                        } else if ( isGrouped && 
-                                    column.dataIndex !== groupField &&
-                                    column.xtype !== 'actioncolumn'){
+                        } else if ( isGrouped && column.dataIndex !== groupField ){
                             clearColumns.push(column);
                         }
                     }
@@ -198,7 +199,7 @@ Ext.define("Ext.ux.grid.Printer", {
             //get Styles file relative location, if not supplied
             if (this.stylesheetPath === null) {
                 var scriptPath = Ext.Loader.getPath('Ext.ux.grid.Printer');
-                this.stylesheetPath = scriptPath.substring(0, scriptPath.indexOf('Printer.js')) + 'gridPrinterCss/print.css';
+                this.stylesheetPath = scriptPath.substring(0, scriptPath.indexOf('Printer.js')) + 'css/print.css';
             }
 
             //use the headerTpl and bodyTpl markups to create the main XTemplate below
@@ -235,11 +236,13 @@ Ext.define("Ext.ux.grid.Printer", {
                     '<title>' + title + '</title>',
                   '</head>',
                   '<body class="' + Ext.baseCSSPrefix + 'ux-grid-printer-body">',
+                  /*
                   '<div class="' + Ext.baseCSSPrefix + 'ux-grid-printer-noprint ' + Ext.baseCSSPrefix + 'ux-grid-printer-links">',
                       '<a class="' + Ext.baseCSSPrefix + 'ux-grid-printer-linkprint" href="javascript:void(0);" onclick="window.print();">' + this.printLinkText + '</a>',
                       '<a class="' + Ext.baseCSSPrefix + 'ux-grid-printer-linkclose" href="javascript:void(0);" onclick="window.close();">' + this.closeLinkText + '</a>',
                   '</div>',
                   '<h1>' + this.mainTitle + '</h1>',
+                   */
                     '<table>',
                       '<tr>',
                         headings,
@@ -253,10 +256,10 @@ Ext.define("Ext.ux.grid.Printer", {
                         '</tpl>',
                         '<tpl if="this.hasSummary">',
                             '<tr>',
-                        	'<tpl for="this.columns">',
-                        		'{[ this.renderSummary(values, xindex) ]}',
-                        	'</tpl>',
-                        	'</tr>',
+                          '<tpl for="this.columns">',
+                            '{[ this.renderSummary(values, xindex) ]}',
+                          '</tpl>',
+                          '</tr>',
                         '</tpl>',
                     '</table>',
                   '</body>',
@@ -264,33 +267,44 @@ Ext.define("Ext.ux.grid.Printer", {
                 {
                     isGrouped              : isGrouped,
                     grid                   : grid,
-              	    columns                : columns,
+                    columns                : columns,
                     hasSummary             : Ext.isObject(summaryFeature),
-              	    summaryFeature         : summaryFeature,
+                    summaryFeature         : summaryFeature,
                     expanderTemplate       : expanderTemplate,
                     renderColumn: function(column, value, rcd, col)
                     {
-                    	var meta = { 'align'            : column.align,
+                      var recordIdx = (grid.store.indexOf && grid.store.indexOf(rcd)) || rcd.index;
+                      var style='';
+                      var tdCls='';
+                      if (column.isTreeColumn) {
+                        //style = rcd.depth? 'padding-left:' + rcd.depth + 'px' :'';
+              tdCls = rcd.isLeaf()? 'treeLeafColumn':'treeNodeColumn';
+                      }
+                      var meta = { 'align'            : column.align,
                                      'cellIndex'        : col,
                                      'classes'          : [],
                                      'column'           : column,
                                      'innerCls'         : '',
                                      'record'           : rcd,
-                                     'recordIndex'      : grid.store.indexOf(rcd),
-                                     'style'            : '',
+                                     'recordIndex'      : recordIdx,
+                                     'style'            : style,
                                      'tdAttr'           : '',
-                                     'tdCls'            : '',
+                                     'tdCls'            : tdCls,
                                      'unselectableAttr' : 'unselectable="on"',
                                      'value'            : value
-                           	       };
-                    	if (column.xtype == 'templatecolumn')
-                    	{
-                    		value = column.tpl ? column.tpl.apply(rcd.data) : value;
-                    	}
-                    	else if (column.renderer)
-                    		value = column.renderer.call(this.grid, value, meta, rcd, -1, col - 1, this.grid.store, this.grid.view);
+                                   };
+                      if (column.xtype == 'templatecolumn') {
+                        value = column.tpl ? column.tpl.apply(rcd.data) : value;
+                      }
+                      else if (column.isTreeColumn) {
+                        value = (new Array(rcd.depth)).join('&nbsp;') + value;
+                      } else if (column.renderer)  {
+                        value = column.renderer.call(column, value, meta, rcd, -1, col - 1, this.grid.store, this.grid.view);
+                        }
+                      /*if (column.isTreeColumn && rcd.depth && value) {
 
-                    	return this.getHtml(value, meta);
+                      }*/
+                      return this.getHtml(value, meta);
                     },
                     applyTpl: function(rcd)
                     {
@@ -298,115 +312,115 @@ Ext.define("Ext.ux.grid.Printer", {
                        
                        return html;
                     },
-             		renderSummary: function(column, colIndex)
-              		{
-              			var value;
-              			if (this.summaryFeature.remoteRoot)
-              			{
-              				var summaryRecord = this.summaryFeature.summaryRecord || (new this.grid.view.store.model(null, this.grid.view.id + '-summary-record'));
-              				if (this.grid.view.store.proxy.reader.rawData) 
-              				{
-              	            	if (Ext.isArray(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot]))
-              	            		summaryRecord.set(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot][0]);
-              	            	else
-              	            		summaryRecord.set(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot]);
-              	            }
-              				value = summaryRecord.get(column.dataIndex);
-              			}
-              			else
-              			{
-              				value = this.getSummary(this.grid.store, column.summaryType, column.dataIndex, false);
-              			}
-              			
-              			if (column.summaryRenderer)
-              			{
-              				var summaryObject;
-                    		if (Ext.getVersion().isLessThan('4.2.0'))
-                    		{
-                    			summaryObject = this.getSummaryObject(column.align);
-                    			value = column.summaryRenderer.call(column, value, summaryObject, column.dataIndex);
-                    			return this.getHtml(value, summaryObject);
-                    		}
-                    		else
-                    		{
-                    			var summaryRcd = this.getSummaryRecord42();
-                    			var summaryObject = this.getSummaryObject42(value, column, colIndex, summaryRcd);
-                    			value = column.summaryRenderer.call(this.grid, 
-                    					                           value, 
-                    					                           summaryObject, 
-                    					                           summaryRcd,
-                    					                           -1,
-                    					                           colIndex,
-                    					                           this.grid.store,
-                    					                           this.grid.view); 
-                    			
-                    			return this.getHtml(value, summaryObject);
-                    		}
-              			}
-              			else
-              			{
-              				var meta = this.getSummaryObject42(column, colIndex);
-              				if (value === undefined || value == 0)
-              					return this.getHtml("&nbsp;", meta);
-              				else
-              					return this.getHtml(value, meta);
-              			}
-              		},
-              		getSummaryObject: function(align)
+                renderSummary: function(column, colIndex)
+                  {
+                    var value;
+                    if (this.summaryFeature.remoteRoot)
+                    {
+                      var summaryRecord = this.summaryFeature.summaryRecord || (new this.grid.view.store.model(null, this.grid.view.id + '-summary-record'));
+                      if (this.grid.view.store.proxy.reader.rawData) 
+                      {
+                              if (Ext.isArray(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot]))
+                                summaryRecord.set(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot][0]);
+                              else
+                                summaryRecord.set(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot]);
+                            }
+                      value = summaryRecord.get(column.dataIndex);
+                    }
+                    else
+                    {
+                      value = this.getSummary(this.grid.store, column.summaryType, column.dataIndex, false);
+                    }
+                    
+                    if (column.summaryRenderer)
+                    {
+                      var summaryObject;
+                        if (Ext.getVersion().isLessThan('4.2.0'))
+                        {
+                          summaryObject = this.getSummaryObject(column.align);
+                          value = column.summaryRenderer.call(column, value, summaryObject, column.dataIndex);
+                          return this.getHtml(value, summaryObject);
+                        }
+                        else
+                        {
+                          var summaryRcd = this.getSummaryRecord42();
+                          var summaryObject = this.getSummaryObject42(value, column, colIndex, summaryRcd);
+                          value = column.summaryRenderer.call(this.grid, 
+                                                         value, 
+                                                         summaryObject, 
+                                                         summaryRcd,
+                                                         -1,
+                                                         colIndex,
+                                                         this.grid.store,
+                                                         this.grid.view); 
+                          
+                          return this.getHtml(value, summaryObject);
+                        }
+                    }
+                    else
+                    {
+                      var meta = this.getSummaryObject42(column, colIndex);
+                      if (value === undefined || value == 0)
+                        return this.getHtml("&nbsp;", meta);
+                      else
+                        return this.getHtml(value, meta);
+                    }
+                  },
+                  getSummaryObject: function(align)
                     {      
-              			var summaryValues = {};
-                   		for (var i = 0; i < columns.length; i++)
-                   		{
-                   			var valueObject = this.getSummary(this.grid.store, this.columns[i].summaryType, this.columns[i].dataIndex, false);
-                   			if (valueObject === undefined)
-                   				continue; // Do nothing
-                   			else
-                   				summaryValues[columns[i].id] = valueObject;
-                   		}
-                   		summaryValues['style'] = "text-align:" + align + ';';
-                   		return summaryValues;
+                    var summaryValues = {};
+                      for (var i = 0; i < columns.length; i++)
+                      {
+                        var valueObject = this.getSummary(this.grid.store, this.columns[i].summaryType, this.columns[i].dataIndex, false);
+                        if (valueObject === undefined)
+                          continue; // Do nothing
+                        else
+                          summaryValues[columns[i].id] = valueObject;
+                      }
+                      summaryValues['style'] = "text-align:" + align + ';';
+                      return summaryValues;
                    },
                    getSummaryRecord42: function()
                    {
-             			if (this.summaryFeature.remoteRoot)
-              			{
-              				var summaryRecord = this.summaryFeature.summaryRecord || (new this.grid.view.store.model(null, this.grid.view.id + '-summary-record'));
-              				if (this.grid.view.store.proxy.reader.rawData) 
-              				{
-              	            	if (Ext.isArray(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot]))
-              	            		summaryRecord.set(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot][0]);
-              	            	else
-              	            		summaryRecord.set(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot]);
-              	            }
-              				return summaryRecord;
-              			}
+                  if (this.summaryFeature.remoteRoot)
+                    {
+                      var summaryRecord = this.summaryFeature.summaryRecord || (new this.grid.view.store.model(null, this.grid.view.id + '-summary-record'));
+                      if (this.grid.view.store.proxy.reader.rawData) 
+                      {
+                              if (Ext.isArray(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot]))
+                                summaryRecord.set(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot][0]);
+                              else
+                                summaryRecord.set(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot]);
+                            }
+                      return summaryRecord;
+                    }
 
-                   		var rcd = Ext.create(this.grid.store.model);
-                   		for (var i = 0; i < this.columns.length; i++)
-                   		{
-                   			var	valueObject = this.getSummary(this.grid.store, this.columns[i].summaryType, this.columns[i].dataIndex, false);
-                   			if (valueObject === undefined)
-                   				continue; // Do nothing
-                   			else
-                   				rcd.set(this.columns[i].dataIndex, valueObject);
-                   		}
-                   		return rcd;
+                      var rcd = Ext.create(this.grid.store.model);
+                      for (var i = 0; i < this.columns.length; i++)
+                      {
+                        var valueObject = this.getSummary(this.grid.store, this.columns[i].summaryType, this.columns[i].dataIndex, false);
+                        if (valueObject === undefined)
+                          continue; // Do nothing
+                        else
+                          rcd.set(this.columns[i].dataIndex, valueObject);
+                      }
+                      return rcd;
                    },
                    getSummaryObject42: function(value, column, colIndex, rcd)
                    {
-                   		return { align : column.align,
-                   			     cellIndex: colIndex,
-                   			     'column': column,
-                   			     classes: [],
-                   			     innerCls: '',
-                   			     record : rcd,
-                   			     recordIndex: -1,
-                   			     style : '',
-                   			     tdAttr : '',
-                   			     tdCls : '',
-                   			     unselectableAttr : 'unselectable="on"',
-                   			     'value' : value
-                   			   };
+                      return { align : column.align,
+                             cellIndex: colIndex,
+                             'column': column,
+                             classes: [],
+                             innerCls: '',
+                             record : rcd,
+                             recordIndex: -1,
+                             style : '',
+                             tdAttr : '',
+                             tdCls : '',
+                             unselectableAttr : 'unselectable="on"',
+                             'value' : value
+                           };
                    },
                    // Use the getSummary from Ext 4.1.3.  This function for 4.2.1 has been changed without updating the documentation
                    // In 4.2.1, group is a group object from the store (specifically grid.store.groups[i].items).
@@ -448,32 +462,37 @@ Ext.define("Ext.ux.grid.Printer", {
                    },
                    getHtml: function(value, meta)
                    {
-                	   if (value == undefined)
-                   			value = '&nbsp;';
-                   	
-                   		var html = '<td '; 
-                   		if (meta.tdCls)
-                   			html += 'class="' + meta.tdCls + '"';
-                   		if (meta.tdAttr)
-                   			html += ' ' + meta.tdAttr;
-                   		html += '><div ';
-                   		if (meta.innerCls)
-                   			html += 'class="' + meta.innerCls + '"';
-                   		html += ' style="text-align: ' + meta.align + ';';
-                   		if (meta.style)
-                   			html += meta.style;
-                   		html += '" ';
-                   		if (meta.unselectableAttr)
-                   			html += meta.unselectableAttr;
-                   		html += '>' + value + '</div></td>';
-                   	
-                   		return html;
+                     if (value == undefined)
+                        value = '&nbsp;';
+                    
+                      var html = '<td '; 
+                      if (meta.tdCls)
+                        html += 'class="' + meta.tdCls + '"';
+                      if (meta.tdAttr)
+                        html += ' ' + meta.tdAttr;
+                      html += '><div ';
+                      if (meta.innerCls)
+                        html += 'class="' + meta.innerCls + '"';
+                      html += ' style="text-align: ' + meta.align + ';';
+                      if (meta.style)
+                        html += meta.style;
+                      html += '" ';
+                      if (meta.unselectableAttr)
+                        html += meta.unselectableAttr;
+                      html += '>' + value + '</div></td>';
+                    
+                      return html;
                    }
                 }
             ];
 
 //            var html = Ext.create('Ext.XTemplate', htmlMarkup).apply(data);
-            var records = grid.store.getRange();
+          var records;
+          if (grid.store instanceof Ext.data.TreeStore)
+            records = this.prepareTreeData(grid);
+          else
+                records = grid.store.getRange();
+
             var html = Ext.create('Ext.XTemplate', htmlMarkup).apply(records); 
 
             //open up a new printing window, write to it, print it and close
@@ -497,7 +516,44 @@ Ext.define("Ext.ux.grid.Printer", {
                 }                
             }
         },
+      prepareTreeData: function(tree) {
+        var root = tree.getRootNode(),
+          data = [],
+          cols = this.getTreeColumns(tree),
+          padding = this.treeIndentPadding;
 
+        var f = function(node) {
+          if (node.hidden === true || (node.isRoot() && node.getOwnerTree() && !node.getOwnerTree().rootVisible)) return;
+
+          var row = Ext.apply({depth: node.getDepth() * padding}, node);
+
+          Ext.iterate(row, function(key, rIdx, value) {
+            Ext.each(cols, function(column, cIdx) {
+              if (column.dataIndex == key) {
+                // (value, metaData, record, rowIdx, colIdx, store, view)
+                row[column.dataIndex] = column.renderer ? column.renderer(value,{},node, rIdx, cIdx, node.store, node.getOwnerTree()) : value;
+              }
+            }, this);
+          });
+
+          //the property used in the first column is renamed to 'text' in node.attributes, so reassign it here
+          row[this.getTreeColumns(tree)[0].dataIndex] = node.data.text;
+
+          data.push(row);
+        };
+
+        root.cascade(f, this);
+
+        return data;
+      },
+      /**
+       * Returns the array of columns from a tree
+       * @param {Ext.tree.ColumnTree} tree The tree to get columns from
+       * @return {Array} The array of tree columns
+       */
+      getTreeColumns: function(tree) {
+        return tree.columns;
+      },
 //        getFeature : function( grid, featureId ) {
 //            var feature;
 //            var view     = grid.getView();
@@ -519,44 +575,44 @@ Ext.define("Ext.ux.grid.Printer", {
 //        },
         
         getFeature : function( grid, featureFType) {
-        	var view = grid.getView();
-        	var features = view.features;
-        	if (features)
-        		for (var i = 0; i <features.length; i++)
-        		{
-        			if (featureFType == 'grouping')
-        				if (features[i].ftype == 'grouping' || features[i].ftype == 'groupingsummary')
-        					return features[i];
-        			if (featureFType == 'groupingsummary')
-        				if (features[i].ftype == 'groupingsummary')
-        					return features[i];        				
-        			if (featureFType == 'summary')
-        				if (features[i].ftype == 'summary')
-        					return features[i];        				
-        		}
-        	return undefined;
+          var view = grid.getView();
+          var features = view.features;
+          if (features)
+            for (var i = 0; i <features.length; i++)
+            {
+              if (featureFType == 'grouping')
+                if (features[i].ftype == 'grouping' || features[i].ftype == 'groupingsummary')
+                  return features[i];
+              if (featureFType == 'groupingsummary')
+                if (features[i].ftype == 'groupingsummary')
+                  return features[i];               
+              if (featureFType == 'summary')
+                if (features[i].ftype == 'summary')
+                  return features[i];               
+            }
+          return undefined;
         },
 
         generateBody : function( grid, columns, feature ) 
         {
-            var groups   = grid.store.getGroups();
+            var groups   = grid.store.getGroups?grid.store.getGroups():null;
             var fields   = grid.store.getProxy().getModel().getFields();
             var hideGroupField = true;
             var groupField;
             var body;
             var groupingSummaryFeature = this.getFeature(grid, 'groupingsummary');
 
-            if ( grid.store.isGrouped() && feature ) 
+            if ( grid.store.isGrouped && grid.store.isGrouped() && feature )
             {
                 hideGroupField = feature.hideGroupedHeader;  // bool
                 groupField = feature.getGroupField();
                 
                 var groupColumn;
                 Ext.each(grid.columns, function(col)
-               	{
-                	if (col.dataIndex == groupField)
-                		groupColumn = col;
-               	});
+                {
+                  if (col.dataIndex == groupField)
+                    groupColumn = col;
+                });
 
                 if ( !feature || !fields || !groupField ) {
                     return;
@@ -613,177 +669,177 @@ Ext.define("Ext.ux.grid.Printer", {
                         },
                         renderColumn: function(column, value, rcd, col)
                         {
-                        	var meta = { 'align'            : column.align,
-                       			         'cellIndex'        : col,
-                       			         'classes'          : [],
-                       			         'column'           : column,
-                       			         'innerCls'         : '',
-                       			         'record'           : rcd,
-                       			         'recordIndex'      : grid.store.indexOf(rcd),
-                       			         'style'            : '',
-                       			         'tdAttr'           : '',
-                       			         'tdCls'            : '',
-                       			         'unselectableAttr' : 'unselectable="on"',
-                       			         'value'            : value
-                               		   };
-                        	if (column.renderer)
-                        		value = column.renderer.call(this.grid, value, meta, rcd, -1, col - 1, this.grid.store, this.grid.view);
+                          var meta = { 'align'            : column.align,
+                                     'cellIndex'        : col,
+                                     'classes'          : [],
+                                     'column'           : column,
+                                     'innerCls'         : '',
+                                     'record'           : rcd,
+                                     'recordIndex'      : grid.store.indexOf(rcd),
+                                     'style'            : '',
+                                     'tdAttr'           : '',
+                                     'tdCls'            : '',
+                                     'unselectableAttr' : 'unselectable="on"',
+                                     'value'            : value
+                                     };
+                          if (column.renderer)
+                            value = column.renderer.call(this.grid, value, meta, rcd, -1, col - 1, this.grid.store, this.grid.view);
 
-                        	return this.getHtml(value, meta);
+                          return this.getHtml(value, meta);
                         },
                         getHtml: function(value, meta)
                         {
-                        	if (value == undefined || value == 0)
-                        		value = '&nbsp;';
-                        	
-                        	var html = '<td ';
-                        	if (meta.tdCls)
-                        		html += 'class="' + meta.tdCls + '"';
-                        	if (meta.tdAttr)
-                        		html += ' ' + meta.tdAttr;
-                        	html += '><div ';
-                        	if (meta.innerCls)
-                        		html += 'class="' + meta.innerCls + '"';
-                        	html += ' style="text-align: ' + meta.align + ';';
-                        	if (meta.style)
-                        		html += meta.style;
-                        	html += '" ';
-                        	if (meta.unselectableAttr)
-                        		html += meta.unselectableAttr;
-                        	html += '>' + value + '</div></td>';
-                        	
-                        	return html;
+                          if (value == undefined || value == 0)
+                            value = '&nbsp;';
+                          
+                          var html = '<td ';
+                          if (meta.tdCls)
+                            html += 'class="' + meta.tdCls + '"';
+                          if (meta.tdAttr)
+                            html += ' ' + meta.tdAttr;
+                          html += '><div ';
+                          if (meta.innerCls)
+                            html += 'class="' + meta.innerCls + '"';
+                          html += ' style="text-align: ' + meta.align + ';';
+                          if (meta.style)
+                            html += meta.style;
+                          html += '" ';
+                          if (meta.unselectableAttr)
+                            html += meta.unselectableAttr;
+                          html += '>' + value + '</div></td>';
+                          
+                          return html;
                         },
                         renderSummary: function(column, colIndex)
-                        {                        	
-                        	var value;
-                        	var summaryObject;
-                  			if (this.summaryFeature.remoteRoot)
-                  			{
-                  				var summaryRecord = this.summaryFeature.summaryRecord || (new this.grid.view.store.model(null, this.grid.view.id + '-summary-record'));
-                  				if (this.grid.view.store.proxy.reader.rawData) 
-                  				{
-                  	            	if (Ext.isArray(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot]))
-                  	            		summaryRecord.set(this.getSummaryRcd(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot], this.grid.store.groupField, this.groupName));
-                  	            	else
-                  	            		summaryRecord.set(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot]);
-                  	            }
-                  				value = summaryRecord.get(column.dataIndex);
-                  			}
-                  			else
-                  			{
-                  				value = this.getSummary(this.grid.store, column.summaryType, column.dataIndex, this.grid.store.isGrouped());
-                  			}
-                        	
-                        	if (Ext.isObject(value))
-                        		value = value[this.groupName];
-                        	
-                        	if (column.summaryRenderer)
-                        		if (Ext.getVersion().isLessThan('4.2.0'))
-                        		{
-                        			value = column.summaryRenderer.call(column, value, this.getSummaryObject(column.align), column.dataIndex);
-                        		}
-                        		else
-                        		{
-                        			summaryObject = this.getSummaryObject42(column, colIndex);
-                        			value = column.summaryRenderer.call(this.grid, 
-                        					                           value, 
-                        					                           this.getSummaryObject42(column, colIndex), 
-                        					                           this.getSummaryRecord42(),
-                        					                           -1,
-                        					                           colIndex,
-                        					                           this.grid.store,
-                        					                           this.grid.view);
+                        {                         
+                          var value;
+                          var summaryObject;
+                        if (this.summaryFeature.remoteRoot)
+                        {
+                          var summaryRecord = this.summaryFeature.summaryRecord || (new this.grid.view.store.model(null, this.grid.view.id + '-summary-record'));
+                          if (this.grid.view.store.proxy.reader.rawData) 
+                          {
+                                  if (Ext.isArray(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot]))
+                                    summaryRecord.set(this.getSummaryRcd(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot], this.grid.store.groupField, this.groupName));
+                                  else
+                                    summaryRecord.set(this.grid.view.store.proxy.reader.rawData[this.summaryFeature.remoteRoot]);
+                                }
+                          value = summaryRecord.get(column.dataIndex);
+                        }
+                        else
+                        {
+                          value = this.getSummary(this.grid.store, column.summaryType, column.dataIndex, this.grid.store.isGrouped());
+                        }
+                          
+                          if (Ext.isObject(value))
+                            value = value[this.groupName];
+                          
+                          if (column.summaryRenderer)
+                            if (Ext.getVersion().isLessThan('4.2.0'))
+                            {
+                              value = column.summaryRenderer.call(column, value, this.getSummaryObject(column.align), column.dataIndex);
+                            }
+                            else
+                            {
+                              summaryObject = this.getSummaryObject42(column, colIndex);
+                              value = column.summaryRenderer.call(this.grid, 
+                                                             value, 
+                                                             this.getSummaryObject42(column, colIndex), 
+                                                             this.getSummaryRecord42(),
+                                                             -1,
+                                                             colIndex,
+                                                             this.grid.store,
+                                                             this.grid.view);
 
-                                	return this.getHtml(value, summaryObject);
-                        		}
-                        	else
-                        		if (value == undefined || value == 0)
-                        			value = '&nbsp;';
+                                  return this.getHtml(value, summaryObject);
+                            }
+                          else
+                            if (value == undefined || value == 0)
+                              value = '&nbsp;';
 
-                        	return '<td><div>' + value + '</div></td>';
+                          return '<td><div>' + value + '</div></td>';
                         },
                         applyGroupTpl: function(rcd)
                         {
-                        	// The only members in rcd are name and children
-                        	this.groupName = rcd.name;
-                        	rcd.groupField = this.grid.store.groupField;
-                        	
-                        	var meta = { 'align'        : '',
-                  			         'cellIndex'        : -1,
-                  			         'classes'          : [],
-                  			         'column'           : this.groupColumn,
-                  			         'innerCls'         : '',
-                  			         'record'           : rcd.children[0],
-                  			         'recordIndex'      : this.grid.store.indexOf(rcd.children[0]),
-                  			         'style'            : '',
-                  			         'tdAttr'           : '',
-                  			         'tdCls'            : '',
-                  			         'unselectableAttr' : 'unselectable="on"',
-                  			         'value'            : rcd.name
-                          		   };
+                          // The only members in rcd are name and children
+                          this.groupName = rcd.name;
+                          rcd.groupField = this.grid.store.groupField;
+                          
+                          var meta = { 'align'        : '',
+                                 'cellIndex'        : -1,
+                                 'classes'          : [],
+                                 'column'           : this.groupColumn,
+                                 'innerCls'         : '',
+                                 'record'           : rcd.children[0],
+                                 'recordIndex'      : this.grid.store.indexOf(rcd.children[0]),
+                                 'style'            : '',
+                                 'tdAttr'           : '',
+                                 'tdCls'            : '',
+                                 'unselectableAttr' : 'unselectable="on"',
+                                 'value'            : rcd.name
+                                 };
 
-                        	if (this.groupColumn)
-                        		rcd.columnName = this.groupColumn.text;
-                        	else
-                        		rcd.columnName = this.groupField;
+                          if (this.groupColumn)
+                            rcd.columnName = this.groupColumn.text;
+                          else
+                            rcd.columnName = this.groupField;
 
-                        	rcd.groupValue = rcd.name;
+                          rcd.groupValue = rcd.name;
 
-                        	if (this.groupColumn && this.groupColumn.renderer)
-                        	{
-                        		rcd.renderedGroupValue = this.groupColumn.renderer.call(this.grid, rcd.name, meta, rcd.children[0], -1, -1, this.grid.store, this.grid.view);
-                        	}
-                        	else
-                        		rcd.renderedGroupValue = rcd.name;
-                        	rcd.rows = null;  // We don't support rcd.rows yet
+                          if (this.groupColumn && this.groupColumn.renderer)
+                          {
+                            rcd.renderedGroupValue = this.groupColumn.renderer.call(this.grid, rcd.name, meta, rcd.children[0], -1, -1, this.grid.store, this.grid.view);
+                          }
+                          else
+                            rcd.renderedGroupValue = rcd.name;
+                          rcd.rows = null;  // We don't support rcd.rows yet
                             return this.groupTpl.apply(rcd); 
                         },
                         getSummaryObject: function(align)
                         {      
-                        	var summaryValues = {};
-                        	for (var i = 0; i < this.columns.length; i++)
-                        	{
-                            	var	valueObject = this.getSummary(this.grid.store, this.columns[i].summaryType, this.columns[i].dataIndex, this.grid.store.isGrouped());
-                            	if (valueObject === undefined)
-                            		continue; // Do nothing
-                            	else if (Ext.isObject(valueObject))
-                            		summaryValues[columns[i].id] = valueObject[this.groupName];
-                            	else
-                            		summaryValues[columns[i].id] = valueObject;
+                          var summaryValues = {};
+                          for (var i = 0; i < this.columns.length; i++)
+                          {
+                              var valueObject = this.getSummary(this.grid.store, this.columns[i].summaryType, this.columns[i].dataIndex, this.grid.store.isGrouped());
+                              if (valueObject === undefined)
+                                continue; // Do nothing
+                              else if (Ext.isObject(valueObject))
+                                summaryValues[columns[i].id] = valueObject[this.groupName];
+                              else
+                                summaryValues[columns[i].id] = valueObject;
                             }
-                        	summaryValues['style'] = "text-align:" + align + ';';
-                        	return summaryValues;
+                          summaryValues['style'] = "text-align:" + align + ';';
+                          return summaryValues;
                         },
                         getSummaryRecord42: function()
                         {
-                        	var rcd = Ext.create(this.grid.store.model);
-                        	for (var i = 0; i < this.columns.length; i++)
-                        	{
-                        		var	valueObject = this.getSummary(this.grid.store, this.columns[i].summaryType, this.columns[i].dataIndex, this.grid.store.isGrouped());
-                        		if (valueObject === undefined)
-                        			continue; // Do nothing
-                        		else if (Ext.isObject(valueObject))
-                        			rcd.set(this.columns[i].dataIndex, valueObject[this.groupName]);
-                        		else
-                        			rcd.set(this.columns[i].dataIndex, valueObject);
-                        	}
-                        	return rcd;
+                          var rcd = Ext.create(this.grid.store.model);
+                          for (var i = 0; i < this.columns.length; i++)
+                          {
+                            var valueObject = this.getSummary(this.grid.store, this.columns[i].summaryType, this.columns[i].dataIndex, this.grid.store.isGrouped());
+                            if (valueObject === undefined)
+                              continue; // Do nothing
+                            else if (Ext.isObject(valueObject))
+                              rcd.set(this.columns[i].dataIndex, valueObject[this.groupName]);
+                            else
+                              rcd.set(this.columns[i].dataIndex, valueObject);
+                          }
+                          return rcd;
                         },
                         getSummaryObject42: function(column, colIndex)
                         {
-                        	return { align : column.align,
-                        			 cellIndex: colIndex,
-                        			 classes: [],
-                        			 innerCls: '',
-                        			 record : this.getSummaryRecord42(),
-                        			 recordIndex: -1,
-                        			 style : '',
-                        			 tdAttr : '',
-                        			 tdCls : '',
-                        			 unselectableAttr : 'unselectable="on"',
-                        			 value : '&#160;'
-                        		   };
+                          return { align : column.align,
+                               cellIndex: colIndex,
+                               classes: [],
+                               innerCls: '',
+                               record : this.getSummaryRecord42(),
+                               recordIndex: -1,
+                               style : '',
+                               tdAttr : '',
+                               tdCls : '',
+                               unselectableAttr : 'unselectable="on"',
+                               value : '&#160;'
+                               };
                         },
                         // Use the getSummary from Ext 4.1.3.  This function for 4.2.1 has been changed without updating the documentation
                         // In 4.2.1, group is a group object from the store (specifically grid.store.groups[i].items).
@@ -828,20 +884,20 @@ Ext.define("Ext.ux.grid.Printer", {
                         // return the record having fieldName == value
                         getSummaryRcd : function(rawDataObject, fieldName, value)
                         {
-                        	if (Ext.isArray(rawDataObject))
-                        	{
-                        		for (var i = 0; i < rawDataObject.length; i++)
-                        		{
-                        			if (rawDataObject[i][fieldName] && rawDataObject[i][fieldName] == value)
-                        				return rawDataObject[i];
-                        		}
-                        		return undefined;
-                        	}
-                        	else
-                        		if (rawDataObject.data[fieldName])
-                        			return rawDataObject;
-                        		else
-                        			return undefined;
+                          if (Ext.isArray(rawDataObject))
+                          {
+                            for (var i = 0; i < rawDataObject.length; i++)
+                            {
+                              if (rawDataObject[i][fieldName] && rawDataObject[i][fieldName] == value)
+                                return rawDataObject[i];
+                            }
+                            return undefined;
+                          }
+                          else
+                            if (rawDataObject.data[fieldName])
+                              return rawDataObject;
+                            else
+                              return undefined;
                         }
                     }
                 ];
@@ -852,7 +908,7 @@ Ext.define("Ext.ux.grid.Printer", {
             {
                 var bodyTpl = [
                           '<tpl for="this.columns">',
-                                '{[ this.renderColumn(values, parent.get(values.dataIndex), parent, xindex) ]}',
+                              '{[ this.renderColumn(values, parent.get(values.dataIndex), parent, xindex) ]}',
                           '</tpl>'
                 ];
 
@@ -861,7 +917,13 @@ Ext.define("Ext.ux.grid.Printer", {
 
             return body;
         },
-        
+      /**
+       * @property treeIndentPadding
+       * @type Number
+       * Number of pixels to indent node by. This is multiplied by the node depth, so a node with node.getDepth() == 3 will
+       * be padded by 45 (or 3x your custom indentPadding)
+       */
+      treeIndentPadding: 3,
         /**
          * @property stylesheetPath
          * @type String
@@ -899,19 +961,19 @@ Ext.define("Ext.ux.grid.Printer", {
          * Title to be used if grid to be printed
          * has no title attribute set.
          */
-        defaultGridTitle: 'Print View',
+        defaultGridTitle: '',
         
         /**
          * Text show on print link
          * @type String
          */
-        printLinkText: 'Print',
+        printLinkText: 'Imprimir',
         
         /**
          * Text show on close link
          * @type String
          */
-        closeLinkText: 'Close',
+        closeLinkText: 'Cerrar',
         
         /**
          * @property headerTpl

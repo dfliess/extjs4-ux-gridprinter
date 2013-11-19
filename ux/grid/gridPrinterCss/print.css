@@ -46,13 +46,13 @@ html.x-ux-grid-printer, .x-ux-grid-printer img,.x-ux-grid-printer body {
 .x-ux-grid-printer a.x-ux-grid-printer-linkprint {
     padding: 0 0 0 18px;
     margin: 0 5px;
-    background: url(printer.png) no-repeat bottom left !important;
+    background: url(../images/printer.png) no-repeat bottom left !important;
 }
 
 .x-ux-grid-printer a.x-ux-grid-printer-linkclose {
     padding: 0 0 0 18px;
     margin: 0 5px;
-    background: url(cross.png) no-repeat bottom left !important;
+    background: url(../images/cross.png) no-repeat bottom left !important;
 }
 
 .x-ux-grid-printer table {
@@ -100,3 +100,9 @@ html.x-ux-grid-printer, .x-ux-grid-printer img,.x-ux-grid-printer body {
     font-size     : 14px;
 }
 
+.treeNodeColumn {
+    font-weight: bold;
+    mso-spacerun:yes;
+    white-space:nowrap;
+    mso-data-placement: same-cell;
+}}
